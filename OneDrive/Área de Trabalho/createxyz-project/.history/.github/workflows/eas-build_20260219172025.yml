@@ -1,0 +1,61 @@
+name: EAS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd apps/mobile
+          npm ci
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Run EAS build (all platforms)
+        env:
+          EAS_TOKEN: ${{ secrets.EAS_TOKEN }}
+        run: |
+          cd apps/mobile
+          eas build --platform all --non-interactive
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Restore Google Play service account
+        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        env:
+          SA_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          python3 - <<'PY'
+import os, json, base64
+s = os.environ.get('SA_JSON', '')
+out = 'apps/mobile/android-service-account.json'
+if not s:
+    print('No service account provided')
+    raise SystemExit(1)
+try:
+    # try parsing as raw JSON
+    json.loads(s)
+    open(out, 'w', encoding='utf-8').write(s)
+    print('Wrote raw JSON service account to', out)
+except Exception:
+    # otherwise treat as base64
+    open(out, 'wb').write(base64.b64decode(s))
+    print('Wrote base64-decoded service account to', out)
+PY
+      - name: EAS Submit Android to Google Play
+        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        env:
+          EAS_TOKEN: ${{ secrets.EAS_TOKEN }}
+        run: |
+          cd apps/mobile
+          echo "Submitting latest Android build to Google Play..."
+          eas submit --platform android --latest --non-interactive --service-account-json ./android-service-account.json
