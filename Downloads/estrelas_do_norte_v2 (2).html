@@ -521,7 +521,7 @@ body {
 </style>
 </head>
 <body>
-<form id="athleteForm" class="athlete-form"></form>
+<form id="athleteForm" class="athlete-form" action="/api/athletes" method="POST" enctype="multipart/form-data">
 <!-- ===== TOPNAV ===== -->
 <nav class="topnav">
   <div class="nav-logo">
@@ -608,6 +608,7 @@ body {
         <div class="photo-box" id="photoBox">
           <div class="photo-cam">📷</div>
           <div class="photo-txt">Clique para<br>carregar foto</div>
+          <input type="file" id="photoInput" name="photo" accept="image/*" style="display:none">
         </div>
         <div class="photo-info">
           <div class="photo-info-title">Foto do Atleta</div>
@@ -1104,13 +1105,82 @@ document.addEventListener('DOMContentLoaded', function() {
   const phoneInputs = document.querySelectorAll('input[name="whatsapp"], input[name="emergencyPhone"]');
   phoneInputs.forEach(input => input.addEventListener('input', formatPhone));
   
-  // Modificar finishForm para incluir validação
-  window.finishFormWithValidation = function() {
+  // Modificar finishForm para incluir validação e envio ao backend
+  window.finishFormWithValidation = async function() {
     if (!validateForm()) {
       return;
     }
-    finishForm();
+
+    const formEl = document.getElementById('athleteForm');
+    const formData = new FormData();
+
+    // Mapar campos do DOM para FormData (campos existentes no formulário)
+    const fields = ['fullName','cpf','birthDate','gender','whatsapp','weight','height','shirt','shoe','position','foot','nis','street','number','neighborhood','city','uf','school','grade','shift','medicalRestriction','allergies','allergyDetails','bloodType','emergencyContact','emergencyPhone','guardianName','guardianCpf','guardianPhone'];
+    fields.forEach(name => {
+      const el = document.querySelector('[name="' + name + '"]') || document.getElementById(name);
+      if (el) {
+        if (el.type === 'checkbox') {
+          if (el.checked) formData.append(name, 'on');
+        } else {
+          if (el.value !== undefined && el.value !== null) formData.append(name, el.value);
+        }
+      }
+    });
+
+    // Photo
+    const photoInput = document.getElementById('photoInput');
+    if (photoInput && photoInput.files && photoInput.files[0]) {
+      formData.append('photo', photoInput.files[0]);
+    }
+
+    // Termo de aceite
+    const termo = document.getElementById('termo');
+    if (!termo || !termo.checked) {
+      termo.parentElement.style.animation = 'shake .3s ease';
+      alert('Por favor, aceite o Termo de Ciência e Compromisso para finalizar.');
+      return;
+    }
+
+    // Enviar ao backend
+    try {
+      const resp = await fetch(formEl.action, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        alert('Erro ao enviar: ' + (err.error || resp.statusText));
+        return;
+      }
+
+      // no sucesso, invocar fluxo de sucesso local
+      finishForm();
+    } catch (e) {
+      console.error(e);
+      alert('Erro de rede ao enviar formulário.');
+    }
   };
+
+  // Photo box: abrir seletor e mostrar pré-visualização
+  const photoBox = document.getElementById('photoBox');
+  const photoInputEl = document.getElementById('photoInput');
+  if (photoBox && photoInputEl) {
+    photoBox.addEventListener('click', () => photoInputEl.click());
+    photoInputEl.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        photoBox.style.backgroundImage = 'url(' + ev.target.result + ')';
+        photoBox.style.backgroundSize = 'cover';
+        photoBox.style.backgroundPosition = 'center';
+        photoBox.querySelector('.photo-cam').style.display = 'none';
+        photoBox.querySelector('.photo-txt').textContent = f.name;
+      };
+      reader.readAsDataURL(f);
+    });
+  }
 });
 </script>
 </body>
