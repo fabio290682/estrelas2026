@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
@@ -20,6 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 app.use(express.json());
+app.use(cors());
 
 // Health
 app.get('/health', (req, res) => res.json({ ok: true }));
