@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Athlete {
+  id           String   @id @default(uuid())
+  full_name    String
+  cpf          String   @unique
+  birth_date   DateTime
+  gender       String
+  whatsapp     String
+  weight       Float?
+  height       Float?
+  shirt_size   String?
+  shoe         Int?
+  position     String?
+  dominant_foot String?
+  nis          String?
+  photo_url    String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  Address      Address[]
+  enrollments  SchoolEnrollment[]
+  medical      MedicalInfo?
+  guardians    Guardian[]
+  submissions  Submission[]
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  athlete_id  String
+  street      String
+  number      String?
+  neighborhood String
+  city        String
+  uf          String
+  postal_code String?
+  created_at  DateTime @default(now())
+  athlete     Athlete  @relation(fields: [athlete_id], references: [id], onDelete: Cascade)
+}
+
+model SchoolEnrollment {
+  id         String   @id @default(uuid())
+  athlete_id String
+  school_name String
+  grade      String
+  shift      String?
+  created_at DateTime @default(now())
+  athlete    Athlete  @relation(fields: [athlete_id], references: [id], onDelete: Cascade)
+}
+
+model MedicalInfo {
+  id                   String   @id @default(uuid())
+  athlete_id           String   @unique
+  medical_restriction  Boolean  @default(false)
+  allergies            Boolean  @default(false)
+  allergy_details      String?
+  blood_type           String?
+  emergency_contact    String?
+  emergency_phone      String?
+  created_at           DateTime @default(now())
+  athlete              Athlete  @relation(fields: [athlete_id], references: [id], onDelete: Cascade)
+}
+
+model Guardian {
+  id         String   @id @default(uuid())
+  athlete_id String
+  name       String
+  cpf        String
+  relationship String?
+  phone      String?
+  created_at DateTime @default(now())
+  athlete    Athlete  @relation(fields: [athlete_id], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id             String   @id @default(uuid())
+  athlete_id     String
+  protocol_number String  @unique
+  status         String   @default("submitted")
+  submitted_at   DateTime @default(now())
+  athlete        Athlete  @relation(fields: [athlete_id], references: [id], onDelete: Cascade)
+}
